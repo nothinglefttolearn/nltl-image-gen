@@ -1,2 +1,2 @@
-# corner-artwork
-Scripts for generating artwork for my music project corner
+# nltl-image-gen
+Scripts for generating images for nltl projects
