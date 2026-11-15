@@ -1,0 +1,27 @@
+[tools]
+python = "3.14"
+uv = "0.13.8"
+
+[settings]
+# Activate the uv-managed .venv whenever you cd into the repo.
+python.uv_venv_auto = true
+
+[tasks.test]
+description = "Run the test suite"
+run = "uv run pytest"
+
+[tasks.lint]
+description = "Lint with ruff"
+run = "uv run ruff check ."
+
+[tasks.format]
+description = "Format with ruff"
+run = "uv run ruff format ."
+
+[tasks.check]
+description = "Check formatting, lint, and test (CI-safe: changes nothing)"
+run = [
+    "uv run ruff format --check .",
+    "uv run ruff check .",
+    "uv run pytest",
+]

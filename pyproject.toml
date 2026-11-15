@@ -1,0 +1,29 @@
+[project]
+name = "nltl-image-gen"
+version = "0.1.0"
+description = "Generate square images of the nltl shapes."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "nltl-values",
+    "pillow>=11",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+nltl-values = { git = "https://github.com/nothinglefttolearn/nltl-values", tag = "v0.1.0" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff.lint]
+extend-select = ["I", "UP", "B", "SIM"]
