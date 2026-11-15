@@ -2,9 +2,9 @@
 
 Shapes and colours come from nltl-values, the shared source of truth:
 
-    uv run nltl_image.py                              # face, primary
-    uv run nltl_image.py --shape space --color secondary
-    uv run nltl_image.py --padding 400                # 400px margin on every side
+    nltl-image                                   # face, primary
+    nltl-image --shape space --color secondary
+    nltl-image --padding 400                     # 400px margin on every side
 
 Shape coordinates are defined on the unit square; the unit square is mapped
 onto the image minus --padding on each side, so face and space images rendered
@@ -17,45 +17,19 @@ from datetime import datetime
 from pathlib import Path
 
 import nltl_values
-from PIL import Image, ImageColor, ImageDraw
+
+from nltl_image.render import render
 
 OUTPUT_DIR = Path("output")
 DEFAULT_SIZE = 4800
 JPEG_SUFFIXES = {".jpg", ".jpeg"}
 
 
-def render(
-    shape_name: str,
-    color_name: str,
-    size: int,
-    padding: int = 0,
-    background: str | None = None,
-) -> Image.Image:
-    """Return a ``size`` x ``size`` RGBA image of the named shape in the named colour.
-
-    Raises ``ValueError`` for out-of-range padding or an unparseable background,
-    and ``KeyError`` for an unknown shape or colour name.
-    """
-    if not 0 <= padding < size / 2:
-        raise ValueError(f"padding must be in [0, {size / 2:g}), got {padding}")
-
-    shape = nltl_values.shape(shape_name)
-    fill = ImageColor.getrgb(nltl_values.color(color_name))
-    bg = ImageColor.getrgb(background) if background else (0, 0, 0, 0)
-
-    # Pillow fills polygons inclusive of their edge pixels, so the last pixel
-    # of the inner square is at padding + inner - 1, not padding + inner.
-    scale = size - 2 * padding - 1
-    points = [(padding + x * scale, padding + y * scale) for x, y in shape.points]
-
-    image = Image.new("RGBA", (size, size), bg)
-    ImageDraw.Draw(image).polygon(points, fill=fill)
-    return image
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        prog="nltl-image",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--shape", choices=nltl_values.shape_names(), default="face")
     parser.add_argument(
@@ -104,7 +78,3 @@ def main(argv: list[str] | None = None) -> None:
     else:
         image.save(path)
     print(f"saved {path}")
-
-
-if __name__ == "__main__":
-    main()
