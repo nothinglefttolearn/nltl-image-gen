@@ -18,13 +18,13 @@ run = "uv run ruff check ."
 description = "Format with ruff"
 run = "uv run ruff format ."
 
+[tasks.format-check]
+description = "Check formatting with ruff (changes nothing)"
+run = "uv run ruff format --check ."
+
 [tasks.check]
 description = "Check formatting, lint, and test (CI-safe: changes nothing)"
-run = [
-    "uv run ruff format --check .",
-    "uv run ruff check .",
-    "uv run pytest",
-]
+depends = ["format-check", "lint", "test"]
 
 [tasks.examples]
 description = "Render the README example images into docs/images/ (fixed seed)"

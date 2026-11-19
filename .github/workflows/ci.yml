@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Fail instead of silently re-locking if uv.lock is out of date.
+  UV_LOCKED: "1"
+
+jobs:
+  check:
+    name: Format, Lint, Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Installs the Python and uv versions pinned in mise.toml.
+      - uses: jdx/mise-action@v5
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
+
+      # The same tasks `mise run check` runs locally, as separate steps so each
+      # gets its own log section. `!cancelled()` keeps later steps running
+      # after an earlier one fails, so one run reports every problem.
+      - name: Format
+        run: mise run format-check
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: mise run lint
+        env:
+          # Inline annotations on the PR diff.
+          RUFF_OUTPUT_FORMAT: github
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: mise run test
