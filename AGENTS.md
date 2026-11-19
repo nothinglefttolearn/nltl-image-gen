@@ -23,13 +23,16 @@ values; to change them, release a new nltl-values tag and bump the pin.
 - CLI: `uv run nltl-image ...` (`[project.scripts]` → `nltl_image.cli:main`)
   or `python -m nltl_image`.
 - Dev tools are in the `dev` dependency group and wrapped as mise tasks:
-  `mise run test | lint | format | format-check`, and `mise run check`
-  (format-check + lint + test, read-only) before committing.
+  `mise run test | lint | typecheck | format | format-check`, and
+  `mise run check` (format-check + lint + typecheck + test, read-only)
+  before committing. mypy checks `src` and `tests` (`[tool.mypy]`).
 - CI (`.github/workflows/ci.yml`) installs the mise-pinned tools and runs
-  the tasks behind `mise run check` (`format-check`, `lint`, `test`) as
-  separate steps on PRs and pushes to `main`, with `UV_LOCKED=1` so a stale
-  `uv.lock` fails. Logic lives in mise tasks; a new check is a new task added
-  to `check`'s `depends` and as a step in the workflow.
+  the tasks behind `mise run check` (`format-check`, `lint`, `typecheck`,
+  `test`) as separate steps on PRs and pushes to `main`, with `UV_LOCKED=1`
+  so a stale `uv.lock` fails. Logic lives in mise tasks; a new check is a
+  new task added to `check`'s `depends` and as a step in the workflow. The
+  job name `CI` is a required status check in the `main` ruleset; renaming
+  it means updating the ruleset too, or PRs can't merge.
 
 ## Layout
 

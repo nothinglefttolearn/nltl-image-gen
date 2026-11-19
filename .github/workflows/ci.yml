@@ -19,7 +19,9 @@ env:
 
 jobs:
   check:
-    name: Format, Lint, Test
+    # Required status check in the main ruleset: renaming it blocks PRs
+    # until the ruleset is updated to match.
+    name: CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -45,6 +47,10 @@ jobs:
         env:
           # Inline annotations on the PR diff.
           RUFF_OUTPUT_FORMAT: github
+
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: mise run typecheck
 
       - name: Test
         if: ${{ !cancelled() }}

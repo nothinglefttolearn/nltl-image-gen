@@ -25,12 +25,16 @@ nltl-values = { git = "https://github.com/nothinglefttolearn/nltl-values", tag =
 
 [dependency-groups]
 dev = [
+    "mypy>=2",
     "pytest>=8",
     "ruff>=0.8",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src", "tests"]
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "B", "SIM"]
