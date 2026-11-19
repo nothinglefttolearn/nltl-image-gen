@@ -10,7 +10,7 @@ dataclass of its settings; randomness comes in through ``apply``::
 
 import random
 from dataclasses import dataclass
-from typing import ClassVar, Protocol
+from typing import Any, ClassVar, Protocol
 
 from PIL import Image, ImageChops, ImageFilter, ImageOps
 
@@ -19,6 +19,9 @@ from nltl_image.noise import fractal_noise, linear_ramp
 
 class Print(Protocol):
     name: ClassVar[str]
+    # Effects are dataclasses; this lets type checkers accept them in
+    # dataclasses.asdict() and fields().
+    __dataclass_fields__: ClassVar[dict[str, Any]]
 
     def apply(self, mask: Image.Image, rng: random.Random) -> Image.Image: ...
 

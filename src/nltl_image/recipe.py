@@ -12,6 +12,7 @@ its own recipe::
 
 import json
 import random
+from collections.abc import Sequence
 from dataclasses import KW_ONLY, asdict, dataclass, field, fields
 from importlib.metadata import version
 from pathlib import Path
@@ -43,8 +44,9 @@ class Recipe:
     _: KW_ONLY
     padding: int = 0
     background: str | None = None
-    prints: tuple[Print, ...] = ()
-    surfaces: tuple[Surface, ...] = ()
+    # Any sequence is accepted; __post_init__ stores a tuple.
+    prints: Sequence[Print] = ()
+    surfaces: Sequence[Surface] = ()
     seed: int = field(default_factory=new_seed)
 
     def __post_init__(self) -> None:
@@ -90,7 +92,7 @@ def _effect_to_dict(effect: Effect) -> dict[str, Any]:
     return {"name": effect.name, **asdict(effect)}
 
 
-def build_effect[T](kind: str, registry: dict[str, type[T]], data: dict) -> T:
+def build_effect[T: Effect](kind: str, registry: dict[str, type[T]], data: dict) -> T:
     """Construct an effect from ``{"name": ..., **settings}``.
 
     Raises ``ValueError`` for an unknown name, an unknown setting, or a

@@ -13,7 +13,7 @@ import math
 import random
 from dataclasses import dataclass
 from functools import cache
-from typing import ClassVar, Protocol
+from typing import Any, ClassVar, Protocol
 
 from PIL import Image, ImageChops, ImageOps, ImageStat
 
@@ -27,6 +27,9 @@ _MIN_THREAD_PX = 8
 
 class Surface(Protocol):
     name: ClassVar[str]
+    # Effects are dataclasses; this lets type checkers accept them in
+    # dataclasses.asdict() and fields().
+    __dataclass_fields__: ClassVar[dict[str, Any]]
 
     def apply(self, image: Image.Image, rng: random.Random) -> Image.Image: ...
 

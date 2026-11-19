@@ -45,18 +45,18 @@ def fractal_noise(
     The result is histogram-equalised, so thresholding at ``255 * (1 - p)``
     selects very nearly a fraction ``p`` of the pixels.
     """
+    if octaves < 1:
+        raise ValueError(f"octaves must be at least 1, got {octaves}")
     # Draw oversized so rotation never exposes empty corners.
     big = math.ceil(size * math.sqrt(2)) if angle % 180 else size
-    field = None
-    weight_total = 0.0
-    weight = 1.0
-    for octave in range(octaves):
-        cells = (big / size) / scale * 2**octave
-        layer = value_noise(big, cells, rng, stretch)
+    cells = (big / size) / scale
+    field = value_noise(big, cells, rng, stretch)
+    weight_total = 1.0
+    weight = persistence
+    for octave in range(1, octaves):
+        layer = value_noise(big, cells * 2**octave, rng, stretch)
         weight_total += weight
-        field = (
-            layer if field is None else Image.blend(field, layer, weight / weight_total)
-        )
+        field = Image.blend(field, layer, weight / weight_total)
         weight *= persistence
 
     if angle % 180:
