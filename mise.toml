@@ -25,3 +25,14 @@ run = [
     "uv run ruff check .",
     "uv run pytest",
 ]
+
+[tasks.examples]
+description = "Render the README example images into docs/images/ (fixed seed)"
+# 1080px: the smallest video size they will be used at. canvas-print is a
+# JPEG because canvas grain makes a PNG several times larger.
+run = [
+    "uv run nltl-image --preset flat --size 1080 --background '#FFFFFF' --seed 7 --output docs/images/flat.png",
+    "uv run nltl-image --preset poster --size 1080 --background '#FFFFFF' --seed 7 --output docs/images/poster.png",
+    "uv run nltl-image --preset worn --size 1080 --background '#FFFFFF' --seed 7 --output docs/images/worn.png",
+    "uv run nltl-image --preset canvas-print --size 1080 --background '#FFFFFF' --seed 7 --output docs/images/canvas-print.jpg",
+]

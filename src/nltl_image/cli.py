@@ -1,80 +1,158 @@
-"""Render one nltl shape in one nltl colour onto a square image.
+"""Command-line front end: arguments -> Recipe -> render -> save.
 
-Shapes and colours come from nltl-values, the shared source of truth:
-
-    nltl-image                                   # face, primary
-    nltl-image --shape space --color secondary
-    nltl-image --padding 400                     # 400px margin on every side
-
-Shape coordinates are defined on the unit square; the unit square is mapped
-onto the image minus --padding on each side, so face and space images rendered
-with the same size and padding line up exactly. The background is transparent
-unless --background is given. Output goes to output/ (created if missing).
+Settings layer as recipe defaults < --preset < explicit options. --print and
+--surface choose effects; their options (--ink, --depth, ...) only adjust an
+effect that is active. No rendering logic lives here.
 """
 
 import argparse
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import nltl_values
 
+from nltl_image.presets import RECIPE_KEYS, builtin_presets, load_preset, preset_recipe
+from nltl_image.prints import PRINTS
+from nltl_image.recipe import DEFAULT_SIZE, save
 from nltl_image.render import render
+from nltl_image.surfaces import SURFACES
 
 OUTPUT_DIR = Path("output")
-DEFAULT_SIZE = 4800
-JPEG_SUFFIXES = {".jpg", ".jpeg"}
+NONE = "none"
+
+# Effect options: which kind of effect and which effect each one adjusts.
+EFFECT_OPTIONS = {
+    "ink": ("print", "screenprint"),
+    "pull": ("print", "screenprint"),
+    "weave": ("surface", "canvas"),
+    "depth": ("surface", "canvas"),
+}
+
+EXAMPLES = """\
+examples:
+  nltl-image                                          # flat face, primary, 2160px
+  nltl-image --shape space --color secondary
+  nltl-image --print screenprint --ink 0.6 --seed 7
+  nltl-image --surface canvas --background '#FFFFFF'
+  nltl-image --preset canvas-print --ink 0.7          # preset, one setting changed
+  nltl-image --preset my-look.toml --surface none     # your preset, minus canvas
+
+Every image carries its recipe (all settings and the seed) as metadata.
+"""
 
 
 def build_parser() -> argparse.ArgumentParser:
+    presets = "\n".join(
+        f"  {name:<14} {description}" for name, description in builtin_presets().items()
+    )
     parser = argparse.ArgumentParser(
         prog="nltl-image",
-        description=__doc__,
+        description="Render an nltl shape in an nltl colour onto a square image.",
+        epilog=f"{EXAMPLES}\nbuilt-in presets:\n{presets}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--shape", choices=nltl_values.shape_names(), default="face")
     parser.add_argument(
-        "--color", choices=sorted(nltl_values.colors()), default="primary"
+        "--preset", metavar="NAME|FILE", help="built-in preset name or .toml path"
     )
+    parser.add_argument("--shape", choices=nltl_values.shape_names())
+    parser.add_argument("--color", choices=sorted(nltl_values.colors()))
     parser.add_argument(
-        "--size", type=int, default=DEFAULT_SIZE, help="image edge in pixels"
+        "--size", type=int, help=f"image edge in pixels (default {DEFAULT_SIZE})"
     )
     parser.add_argument(
         "--padding",
         type=int,
-        default=0,
         help="empty margin in pixels on every side (default 0: shape fills the square)",
     )
     parser.add_argument(
         "--background",
-        help="background colour, e.g. '#FFFFFF' (default: transparent)",
+        help="colour of the material, e.g. '#FFFFFF' (default: transparent)",
+    )
+
+    prints = parser.add_argument_group("print: where ink lands")
+    prints.add_argument("--print", choices=[*sorted(PRINTS), NONE])
+    prints.add_argument(
+        "--ink",
+        type=float,
+        help="screenprint: fraction of the shape that gets ink, 0-1 (default 0.7)",
+    )
+    prints.add_argument(
+        "--pull",
+        type=float,
+        help="screenprint: squeegee direction in degrees counter-clockwise from "
+        "rightward; ink runs out towards the end (default 270, top to bottom)",
+    )
+
+    surfaces = parser.add_argument_group("surface: the material it is printed on")
+    surfaces.add_argument("--surface", choices=[*sorted(SURFACES), NONE])
+    surfaces.add_argument(
+        "--weave",
+        type=float,
+        help="canvas: thread spacing as a fraction of the image edge "
+        "(default 0.006, about 170 threads across)",
+    )
+    surfaces.add_argument(
+        "--depth",
+        type=float,
+        help="canvas: how strongly the weave shades colour, 0-1 (default 0.3)",
+    )
+
+    parser.add_argument(
+        "--seed", type=int, help="fixes every random choice (default: random)"
     )
     parser.add_argument(
         "--output",
         type=Path,
-        help="output path (default: timestamped PNG in output/)",
+        help="output path, .png or .jpg (default: named PNG in output/)",
     )
     return parser
+
+
+def layer(preset: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    """Explicit command-line choices layered over a loaded preset."""
+    layered = {k: v for k, v in preset.items() if k in RECIPE_KEYS}
+    layered |= {k: v for k in RECIPE_KEYS if (v := getattr(args, k)) is not None}
+
+    for kind in ("print", "surface"):
+        table = {name: dict(s) for name, s in preset.get(kind, {}).items()}
+        match getattr(args, kind):
+            case None:
+                pass
+            case "none":
+                table = {}
+            case chosen if chosen not in table:
+                table = {chosen: {}}
+        layered[kind] = table
+
+    for option, (kind, effect) in EFFECT_OPTIONS.items():
+        if (value := getattr(args, option)) is None:
+            continue
+        if effect not in layered[kind]:
+            raise ValueError(f"--{option} needs --{kind} {effect}")
+        layered[kind][effect][option] = value
+    return layered
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-
-    path: Path = args.output or OUTPUT_DIR / (
-        f"nltl-{args.shape}-{args.color}-{datetime.now():%Y%m%d-%H%M%S}.png"
-    )
-    is_jpeg = path.suffix.lower() in JPEG_SUFFIXES
-    if is_jpeg and not args.background:
-        parser.error("JPEG has no transparency; pass --background")
-
     try:
-        image = render(args.shape, args.color, args.size, args.padding, args.background)
+        preset = load_preset(args.preset) if args.preset else {}
+        recipe = preset_recipe(layer(preset, args), seed=args.seed)
+        path: Path = args.output or OUTPUT_DIR / "-".join(
+            [
+                "nltl",
+                recipe.shape,
+                recipe.color,
+                *([Path(args.preset).stem] if args.preset else []),
+                f"{datetime.now():%Y%m%d-%H%M%S}",
+                f"s{recipe.seed}.png",
+            ]
+        )
+        image = render(recipe)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save(image, recipe, path)
     except ValueError as e:
         parser.error(str(e))
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if is_jpeg:
-        image.convert("RGB").save(path, quality=95)
-    else:
-        image.save(path)
-    print(f"saved {path}")
+    print(f"saved {path} (seed {recipe.seed})")

@@ -1,0 +1,6 @@
+description = "The end of the run: the screen is drying out and gaps take over"
+extends = "poster"
+
+[print.screenprint]
+ink = 0.5
+starve = 0.7

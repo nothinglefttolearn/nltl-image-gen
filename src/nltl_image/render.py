@@ -7,15 +7,16 @@ Rendering happens in two steps, and each one is a building block in its own righ
 2. ``fill`` paints a colour through a mask onto a background. It says *what*
    the shape looks like.
 
-Effects that change the outline (distortion, roughening, blur) can work on
-the mask, and effects that change the surface (texture, grain) can work on
-the filled image, without either needing to know about shape geometry.
+``render`` runs a whole ``Recipe``: prints transform the mask (they decide
+where ink lands), surfaces transform the filled image (they change colour
+only), and neither needs to know about shape geometry.
 """
 
 import nltl_values
 from PIL import Image, ImageColor, ImageDraw
 
 from nltl_image.geometry import shape_points
+from nltl_image.recipe import Recipe
 
 TRANSPARENT = (0, 0, 0, 0)
 
@@ -39,17 +40,20 @@ def fill(mask: Image.Image, color: str, background: str | None = None) -> Image.
     return image
 
 
-def render(
-    shape_name: str,
-    color_name: str,
-    size: int,
-    padding: int = 0,
-    background: str | None = None,
-) -> Image.Image:
-    """A ``size`` x ``size`` RGBA image of a named shape in a named nltl colour.
+def render(recipe: Recipe) -> Image.Image:
+    """A ``size`` x ``size`` RGBA image of the recipe's shape in its nltl colour.
 
-    Raises ``ValueError`` for out-of-range padding or an unparseable background,
-    and ``KeyError`` for an unknown shape or colour name.
+    Prints decide where ink lands (mask -> mask), then the mask is filled,
+    then surfaces change how everything looks (image -> image). Each effect
+    gets its own random stream from the recipe's seed.
+
+    Raises ``ValueError`` for out-of-range padding or an unparseable
+    background, and ``KeyError`` for an unknown shape or colour.
     """
-    mask = shape_mask(shape_name, size, padding)
-    return fill(mask, nltl_values.color(color_name), background)
+    mask = shape_mask(recipe.shape, recipe.size, recipe.padding)
+    for i, effect in enumerate(recipe.prints):
+        mask = effect.apply(mask, recipe.rng("print", i, effect))
+    image = fill(mask, nltl_values.color(recipe.color), recipe.background)
+    for i, effect in enumerate(recipe.surfaces):
+        image = effect.apply(image, recipe.rng("surface", i, effect))
+    return image

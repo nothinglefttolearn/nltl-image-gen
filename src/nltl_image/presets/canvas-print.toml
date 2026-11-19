@@ -1,0 +1,5 @@
+description = "A poster pull on artist's cotton canvas"
+extends = "poster"
+
+[surface.canvas]
+depth = 0.3

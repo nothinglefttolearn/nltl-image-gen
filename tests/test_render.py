@@ -1,7 +1,7 @@
 import pytest
 from PIL import ImageChops
 
-from nltl_image import fill, render, shape_mask
+from nltl_image import Recipe, fill, render, shape_mask
 
 SIZE = 1000
 
@@ -31,9 +31,14 @@ def test_fill_paints_colour_only_inside_mask():
 
 
 def test_background_defaults_to_transparent():
-    assert render("face", "primary", SIZE).getpixel((SIZE - 1, 0)) == (0, 0, 0, 0)
+    assert render(Recipe("face", "primary", SIZE)).getpixel((SIZE - 1, 0)) == (
+        0,
+        0,
+        0,
+        0,
+    )
 
 
 def test_render_uses_named_nltl_colour():
-    pixel = render("face", "secondary", SIZE).getpixel((0, SIZE - 1))
+    pixel = render(Recipe("face", "secondary", SIZE)).getpixel((0, SIZE - 1))
     assert pixel == (0x87, 0x9B, 0x87, 255)

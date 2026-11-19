@@ -1,7 +1,8 @@
 # nltl-image-gen
 
 Generate square images of the nltl shapes (`face`, `space`) in the nltl
-colours (`primary`, `secondary`). Shapes and colours come from
+colours (`primary`, `secondary`). Optional effects make them look
+physically printed. Shapes and colours come from
 [nltl-values](https://github.com/nothinglefttolearn/nltl-values), pinned in
 `pyproject.toml`.
 
@@ -9,25 +10,154 @@ colours (`primary`, `secondary`). Shapes and colours come from
 mise install    # python + uv, pinned in mise.toml
 uv sync         # pillow + nltl-values, pinned in uv.lock
 
-uv run nltl-image                                      # face, primary, 4800px
+uv run nltl-image                                   # flat face, primary, 2160px
 uv run nltl-image --shape space --color secondary
-uv run nltl-image --padding 400                     # 400px margin on all sides
-uv run nltl-image --background '#FFFFFF' --size 2400
+uv run nltl-image --padding 200                     # 200px margin on all sides
+uv run nltl-image --background '#FFFFFF' --size 1080
 ```
 
 Images are transparent PNGs written to `output/` as
-`nltl-<shape>-<color>-<timestamp>.png`; pass `--output` to choose a path.
+`nltl-<shape>-<color>[-<preset>]-<timestamp>-s<seed>.png`. Pass `--output`
+to choose a path; a `.jpg` path needs `--background`. The default size, 2160px,
+is the height of a 4K video frame and halves exactly to 1080p.
 `python -m nltl_image` works too, and inside the mise-activated venv plain
 `nltl-image` does.
+
+## Effects
+
+There are two kinds of effect, and you can use either, both or neither:
+
+- A **print** decides *where ink lands* inside the shape. It can leave gaps
+  but never inks outside the outline. Choose one with `--print`.
+- A **surface** makes the whole image look like it is on a material, ink
+  and background alike. It changes colour only, never where ink is or how
+  transparent anything is, so a transparent PNG keeps a clean edge. Choose
+  one with `--surface`.
+
+Effect settings are fractions of the image edge, so a render looks the same
+at any size, just with more or fewer pixels.
+
+| `flat` | `poster` | `worn` | `canvas-print` |
+|---|---|---|---|
+| ![flat](docs/images/flat.png) | ![poster](docs/images/poster.png) | ![worn](docs/images/worn.png) | ![canvas-print](docs/images/canvas-print.jpg) |
+
+These are the four built-in [presets](#presets) at 1080px on a white
+background, seed 7. Regenerate them with `mise run examples`.
+
+### Screenprint (print)
+
+An ink-starved screen print. Ink is pushed through a mesh by a squeegee and
+runs out along the pull, leaving liquid-shaped gaps: rounded edges,
+droplets, pinholes.
+
+```bash
+uv run nltl-image --print screenprint                       # ink 0.7, pulled top to bottom
+uv run nltl-image --print screenprint --ink 0.9             # a good, nearly full pull
+uv run nltl-image --print screenprint --ink 0.4 --pull 0    # sparse, pulled left to right
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--ink` | `0.7` | Roughly the fraction of the shape that gets ink, 0–1. |
+| `--pull` | `270` | Squeegee direction in degrees counter-clockwise from rightward (270 = top to bottom). Patches streak along it and ink runs out towards its end. |
+
+### Canvas (surface)
+
+Artist's cotton canvas: a plain over-under weave of slightly irregular
+threads, with faint uneven patches. Colour is lightened on the raised
+threads and darkened between them. On a transparent background the weave
+shows only on the ink; add `--background` to see the whole canvas.
+
+```bash
+uv run nltl-image --surface canvas --background '#FFFFFF'
+uv run nltl-image --surface canvas --depth 0.6              # stronger weave
+uv run nltl-image --surface canvas --weave 0.01             # coarser, ~100 threads across
+uv run nltl-image --print screenprint --surface canvas --background '#FFFFFF'
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--weave` | `0.006` | Thread spacing as a fraction of the image edge (about 170 threads across). |
+| `--depth` | `0.3` | How strongly the weave shades colour, 0–1. |
+
+The defaults are tuned for video: threads are about 13px at 2160 and 6px at
+1080, coarse enough to survive compression without shimmering. Much finer
+weaves turn to mush or moiré once the image is encoded or zoomed.
+
+Options only adjust an effect that is active: `--ink` without
+`--print screenprint` (or a preset that has it) is an error.
+
+## Presets
+
+A preset is a named, reusable starting point: effects and their settings,
+and optionally shape, colour, size, padding or background, but never a seed.
+Explicit options override it.
+
+```bash
+uv run nltl-image --preset worn
+uv run nltl-image --preset canvas-print --ink 0.7       # change one setting
+uv run nltl-image --preset canvas-print --surface none  # drop the canvas
+uv run nltl-image --preset my-look.toml                 # your own file
+```
+
+| Preset | Look |
+|---|---|
+| `flat` | Perfect flat colour: no print, no surface. Same as no preset. |
+| `poster` | A good screenprint pull: nearly full, slight wear towards the end. |
+| `worn` | The end of the run: the screen is drying out and gaps take over. Extends `poster`. |
+| `canvas-print` | A `poster` pull on canvas. Extends `poster`. |
+
+A preset file is TOML. `extends` takes a built-in name or a path relative
+to the file, and settings in the extending file win:
+
+```toml
+description = "Canvas print, heavier weave, faded"
+extends = "canvas-print"
+
+[print.screenprint]
+ink = 0.6
+
+[surface.canvas]
+depth = 0.45
+```
+
+Library-only settings work here too: screenprint's `starve`, `scale` and
+`tension`, and canvas's `irregularity` and `mottle` (see the docstrings in
+`prints.py` and `surfaces.py`). `nltl-image --help` lists the built-ins.
+
+## Seeds and recipes
+
+Every render has a seed that fixes all its random choices. Without `--seed`
+one is picked at random and shown in the filename and the output
+(`saved … (seed 48213)`).
+
+Every image also carries its **recipe**: shape, colour, size, padding,
+background, each effect with all its settings, and the seed. It's stored as
+JSON in the PNG metadata (or the JPEG comment), so an image you like can be
+reproduced exactly, even after you've forgotten how you made it:
+
+```bash
+uv run python -c "from nltl_image import read_recipe; print(read_recipe('output/nltl-face-primary-….png'))"
+```
+
+## Library
 
 The same building blocks are importable:
 
 ```python
-from nltl_image import fill, render, shape_mask
+import random
+from nltl_image import Canvas, Recipe, Screenprint, fill, render, save, shape_mask
 
-render("face", "primary", 2400, padding=200).save("face.png")
-fill(shape_mask("space", 2400), "#000000", background="#FFFFFF")
+recipe = Recipe("face", "primary", 2160, prints=[Screenprint(ink=0.6)], seed=7)
+save(render(recipe), recipe, "face.png")  # recipe embedded
+
+# Or compose by hand:
+mask = Screenprint().apply(shape_mask("space", 2160), random.Random(1))
+Canvas().apply(fill(mask, "#000000", background="#FFFFFF"), random.Random(2))
 ```
+
+`Recipe` accepts any number of prints and surfaces, applied in order; the
+CLI chooses at most one of each.
 
 ## Development
 
@@ -36,4 +166,5 @@ mise run test        # pytest (extra args pass through: mise run test -k padding
 mise run lint        # ruff check
 mise run format      # ruff format
 mise run check       # format check + lint + test, changes nothing
+mise run examples    # re-render docs/images/
 ```

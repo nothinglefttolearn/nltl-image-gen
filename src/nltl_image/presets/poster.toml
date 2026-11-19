@@ -1,0 +1,5 @@
+description = "A good screenprint pull: nearly full, slight wear towards the end"
+
+[print.screenprint]
+ink = 0.85
+starve = 0.3
