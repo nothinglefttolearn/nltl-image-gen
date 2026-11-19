@@ -33,5 +33,19 @@ jobs:
           key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
           restore-keys: uv-${{ runner.os }}-
 
-      # Same task developers run locally before committing.
-      - run: mise run check
+      # The same tasks `mise run check` runs locally, as separate steps so each
+      # gets its own log section. `!cancelled()` keeps later steps running
+      # after an earlier one fails, so one run reports every problem.
+      - name: Format
+        run: mise run format-check
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: mise run lint
+        env:
+          # Inline annotations on the PR diff.
+          RUFF_OUTPUT_FORMAT: github
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: mise run test
