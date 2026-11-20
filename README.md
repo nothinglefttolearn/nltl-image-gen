@@ -1,10 +1,12 @@
 # nltl-image-gen
 
-Generate square images of the nltl shapes (`face`, `space`) in the nltl
-colours (`primary`, `secondary`). Optional effects make them look
-physically printed. Shapes and colours come from
+Generate square images of the nltl shapes (`face` and `space`, and their
+variants `face2`/`space2`, `face3`/`space3`) in the nltl colours (the art
+palette: `primary`, `secondary`, `bg-dark`, `bg-light`, `canvas`). Optional
+effects make them look physically printed. Shapes and colours come from
 [nltl-values](https://github.com/nothinglefttolearn/nltl-values), pinned in
-`pyproject.toml`.
+`pyproject.toml`; colours are named without nltl-values' `art.` group
+([why](docs/adr/0001-short-colour-names-in-recipes.md)).
 
 ```bash
 mise install    # python + uv, pinned in mise.toml
@@ -12,13 +14,16 @@ uv sync         # pillow + nltl-values, pinned in uv.lock
 
 uv run nltl-image                                   # flat face, primary, 2160px
 uv run nltl-image --shape space --color secondary
+uv run nltl-image --shape face3 --background canvas # palette colour as background
 uv run nltl-image --padding 200                     # 200px margin on all sides
 uv run nltl-image --background '#FFFFFF' --size 1080
 ```
 
 Images are transparent PNGs written to `output/` as
-`nltl-<shape>-<color>[-<preset>]-<timestamp>-s<seed>.png`. Pass `--output`
-to choose a path; a `.jpg` path needs `--background`. The default size, 2160px,
+`nltl-<shape>-<color>[-<preset>]-<timestamp>-s<seed>.png`. Set
+`NLTL_IMAGE_OUTPUT_DIR` to write them somewhere else (relative paths are from
+the current directory, `~` is expanded), or pass `--output` to choose an exact
+path, which wins over both; a `.jpg` path needs `--background`. The default size, 2160px,
 is the height of a 4K video frame and halves exactly to 1080p.
 `python -m nltl_image` works too, and inside the mise-activated venv plain
 `nltl-image` does.

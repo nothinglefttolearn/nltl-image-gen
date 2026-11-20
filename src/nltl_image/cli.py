@@ -6,12 +6,14 @@ effect that is active. No rendering logic lives here.
 """
 
 import argparse
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import nltl_values
 
+from nltl_image import palette
 from nltl_image.presets import RECIPE_KEYS, builtin_presets, load_preset, preset_recipe
 from nltl_image.prints import PRINTS
 from nltl_image.recipe import DEFAULT_SIZE, save
@@ -19,6 +21,7 @@ from nltl_image.render import render
 from nltl_image.surfaces import SURFACES
 
 OUTPUT_DIR = Path("output")
+OUTPUT_DIR_ENV = "NLTL_IMAGE_OUTPUT_DIR"
 NONE = "none"
 
 # Effect options: which kind of effect and which effect each one adjusts.
@@ -33,6 +36,7 @@ EXAMPLES = """\
 examples:
   nltl-image                                          # flat face, primary, 2160px
   nltl-image --shape space --color secondary
+  nltl-image --shape face3 --background canvas        # palette background
   nltl-image --print screenprint --ink 0.6 --seed 7
   nltl-image --surface canvas --background '#FFFFFF'
   nltl-image --preset canvas-print --ink 0.7          # preset, one setting changed
@@ -56,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--preset", metavar="NAME|FILE", help="built-in preset name or .toml path"
     )
     parser.add_argument("--shape", choices=nltl_values.shape_names())
-    parser.add_argument("--color", choices=sorted(nltl_values.colors()))
+    parser.add_argument("--color", choices=palette.color_names())
     parser.add_argument(
         "--size", type=int, help=f"image edge in pixels (default {DEFAULT_SIZE})"
     )
@@ -67,7 +71,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--background",
-        help="colour of the material, e.g. '#FFFFFF' (default: transparent)",
+        help="colour of the material: a palette colour or e.g. '#FFFFFF' "
+        "(default: transparent)",
     )
 
     prints = parser.add_argument_group("print: where ink lands")
@@ -104,7 +109,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         type=Path,
-        help="output path, .png or .jpg (default: named PNG in output/)",
+        help=f"output path, .png or .jpg (default: named PNG in ${OUTPUT_DIR_ENV}, "
+        f"or {OUTPUT_DIR}/ if unset)",
     )
     return parser
 
@@ -134,13 +140,20 @@ def layer(preset: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
     return layered
 
 
+def output_dir() -> Path:
+    """Where auto-named images go: $NLTL_IMAGE_OUTPUT_DIR, else ./output."""
+    if value := os.environ.get(OUTPUT_DIR_ENV):
+        return Path(value).expanduser()
+    return OUTPUT_DIR
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
         preset = load_preset(args.preset) if args.preset else {}
         recipe = preset_recipe(layer(preset, args), seed=args.seed)
-        path: Path = args.output or OUTPUT_DIR / "-".join(
+        path: Path = args.output or output_dir() / "-".join(
             [
                 "nltl",
                 recipe.shape,

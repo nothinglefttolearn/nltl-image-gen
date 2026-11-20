@@ -230,7 +230,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "nltl-values", git = "https://github.com/nothinglefttolearn/nltl-values?tag=v0.1.0" },
+    { name = "nltl-values", git = "https://github.com/nothinglefttolearn/nltl-values?tag=v0.5.0" },
     { name = "pillow", specifier = ">=11" },
 ]
 
@@ -244,7 +244,7 @@ dev = [
 [[package]]
 name = "nltl-values"
 version = "0.1.0"
-source = { git = "https://github.com/nothinglefttolearn/nltl-values?tag=v0.1.0#ebfaa2bacbf04132b9be71ced56de0732ff7c549" }
+source = { git = "https://github.com/nothinglefttolearn/nltl-values?tag=v0.5.0#90b82a12172502072bf417501c4ee54a12e18b31" }
 
 [[package]]
 name = "packaging"

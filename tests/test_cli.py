@@ -4,7 +4,7 @@ import pytest
 from PIL import Image
 
 from nltl_image import Canvas, Screenprint, read_recipe
-from nltl_image.cli import build_parser, main
+from nltl_image.cli import OUTPUT_DIR_ENV, build_parser, main
 
 
 def run(tmp_path, *args, name="out.png"):
@@ -86,6 +86,7 @@ def test_choosing_an_active_effect_keeps_preset_settings(tmp_path):
 
 def test_default_name_has_preset_and_seed(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(OUTPUT_DIR_ENV, raising=False)
     main(["--size", "64", "--preset", "worn", "--seed", "123"])
     (path,) = (tmp_path / "output").iterdir()
     assert re.fullmatch(r"nltl-face-primary-worn-\d{8}-\d{6}-s123\.png", path.name)
@@ -94,3 +95,44 @@ def test_default_name_has_preset_and_seed(tmp_path, monkeypatch, capsys):
 
 def test_help_lists_builtin_presets():
     assert "canvas-print" in build_parser().format_help()
+
+
+def test_output_dir_from_environment(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(OUTPUT_DIR_ENV, "renders/today")
+    main(["--size", "64", "--seed", "1"])
+    (path,) = (tmp_path / "renders" / "today").iterdir()
+    assert path.name.startswith("nltl-face-primary-")
+    assert not (tmp_path / "output").exists()
+
+
+def test_output_dir_expands_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv(OUTPUT_DIR_ENV, "~/renders")
+    main(["--size", "64"])
+    assert len(list((tmp_path / "renders").iterdir())) == 1
+
+
+def test_empty_output_dir_means_default(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(OUTPUT_DIR_ENV, "")
+    main(["--size", "64"])
+    assert len(list((tmp_path / "output").iterdir())) == 1
+
+
+def test_output_path_beats_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv(OUTPUT_DIR_ENV, str(tmp_path / "ignored"))
+    run(tmp_path)
+    assert (tmp_path / "out.png").exists() and not (tmp_path / "ignored").exists()
+
+
+def test_color_choices_are_the_art_palette(capsys):
+    assert "invalid choice" in usage_error(capsys, "--color", "accent")
+
+
+def test_background_takes_a_palette_name(tmp_path):
+    assert run(tmp_path, "--background", "canvas").background == "canvas"
+
+
+def test_new_shape_variants(tmp_path):
+    assert run(tmp_path, "--shape", "face3").shape == "face3"

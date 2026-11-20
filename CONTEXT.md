@@ -6,6 +6,16 @@ into video elsewhere; this project never makes video itself.
 
 ## Language
 
+### Shapes
+
+**Shape**:
+One of the named nltl shapes, drawn filling the square image (less any padding). Shapes come in pairs: a **face** and its **space**, where the space is the square minus the face, so the two fit together exactly. There are numbered variants of each pair (face2/space2, face3/space3), and every face's corner meets at the same point. Shapes are defined in nltl-values, never here.
+_Avoid_: logo, mark, glyph
+
+**Colour**:
+One of the nltl art palette, by its short name (primary, secondary, ...). The website's interface colours are not colours here. Colours are defined in nltl-values, never here.
+_Avoid_: art colour, brand colour, web colour
+
 ### Effects
 
 **Print**:
@@ -45,7 +55,7 @@ _Avoid_: style, template, profile
 ### Material
 
 **Background**:
-The colour of the material the shape is printed on. With no background the image is transparent outside the ink, and a surface then shows only on the ink.
+The colour of the material the shape is printed on: a colour from the palette by name, or any other colour. With no background the image is transparent outside the ink, and a surface then shows only on the ink.
 _Avoid_: paper colour, base
 
 **Ink**:
