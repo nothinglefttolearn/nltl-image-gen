@@ -12,9 +12,9 @@ where ink lands), surfaces transform the filled image (they change colour
 only), and neither needs to know about shape geometry.
 """
 
-import nltl_values
 from PIL import Image, ImageColor, ImageDraw
 
+from nltl_image import palette
 from nltl_image.geometry import shape_points
 from nltl_image.recipe import Recipe
 
@@ -47,13 +47,16 @@ def render(recipe: Recipe) -> Image.Image:
     then surfaces change how everything looks (image -> image). Each effect
     gets its own random stream from the recipe's seed.
 
-    Raises ``ValueError`` for out-of-range padding or an unparseable
-    background, and ``KeyError`` for an unknown shape or colour.
+    The colour is a palette name; the background is a palette name or any
+    colour Pillow understands. Raises ``ValueError`` for out-of-range padding
+    or an unparseable background, and ``KeyError`` for an unknown shape or
+    colour.
     """
     mask = shape_mask(recipe.shape, recipe.size, recipe.padding)
     for i, effect in enumerate(recipe.prints):
         mask = effect.apply(mask, recipe.rng("print", i, effect))
-    image = fill(mask, nltl_values.color(recipe.color), recipe.background)
+    background = palette.resolve(recipe.background) if recipe.background else None
+    image = fill(mask, palette.color(recipe.color), background)
     for i, effect in enumerate(recipe.surfaces):
         image = effect.apply(image, recipe.rng("surface", i, effect))
     return image
