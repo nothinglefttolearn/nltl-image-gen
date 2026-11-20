@@ -40,3 +40,8 @@ def test_ramp_rises_along_angle(angle, low, high):
     ramp = linear_ramp(SIZE, angle)
     assert ramp.getpixel(low) < 20
     assert ramp.getpixel(high) > 235
+
+
+def test_needs_at_least_one_octave():
+    with pytest.raises(ValueError, match="octaves"):
+        fractal_noise(SIZE, 0.2, random.Random(1), octaves=0)
