@@ -28,6 +28,25 @@ is the height of a 4K video frame and halves exactly to 1080p.
 `python -m nltl_image` works too, and inside the mise-activated venv plain
 `nltl-image` does.
 
+## Batches
+
+`--shape`, `--color` and the effect options (`--ink`, `--pull`, `--weave`,
+`--depth`) take several values, and `--count` (`-n`) renders each
+combination of them that many times, each time with a different seed, so
+the print's pattern varies:
+
+```bash
+uv run nltl-image --print screenprint --ink 0.6 -n 10       # 10 different pulls
+uv run nltl-image --shape face space3 --print screenprint --ink 0.4 0.7 0.9 -n 5
+                                                            # 2 × 3 × 5 = 30 images
+```
+
+Every combination uses the same `--count` seeds, so images with the same
+seed differ only in the settings you varied: the same pull at different
+inks. With `--seed N` the seeds are N, N+1, …; without it they're random.
+An effect option given several values goes in the file name too
+(`nltl-face-primary-ink0.4-…-s123.png`). A batch can't use `--output`.
+
 ## Effects
 
 There are two kinds of effect, and you can use either, both or neither:
