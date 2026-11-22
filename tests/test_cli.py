@@ -136,3 +136,69 @@ def test_background_takes_a_palette_name(tmp_path):
 
 def test_new_shape_variants(tmp_path):
     assert run(tmp_path, "--shape", "face3").shape == "face3"
+
+
+def batch(tmp_path, monkeypatch, *args):
+    """Run a batch into tmp_path/output and return {file name: recipe}."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(OUTPUT_DIR_ENV, raising=False)
+    main(["--size", "32", *args])
+    return {p.name: read_recipe(p) for p in (tmp_path / "output").iterdir()}
+
+
+def test_count_renders_one_shape_with_different_seeds(tmp_path, monkeypatch):
+    made = batch(
+        tmp_path, monkeypatch, "--print", "screenprint", "--ink", "0.5", "-n", "4"
+    )
+    recipes = list(made.values())
+    assert len(recipes) == 4
+    assert len({r.seed for r in recipes}) == 4
+    assert {r.prints for r in recipes} == {(Screenprint(ink=0.5),)}
+
+
+def test_batch_covers_every_combination_count_times(tmp_path, monkeypatch):
+    made = batch(
+        tmp_path, monkeypatch,
+        "--shape", "face", "space2", "--print", "screenprint",
+        "--ink", "0.4", "0.7", "0.9", "--count", "2", "--seed", "10",
+    )  # fmt: skip
+    combos = [(r.shape, r.prints[0].ink, r.seed) for r in made.values()]
+    assert sorted(combos) == sorted(
+        (shape, ink, seed)
+        for shape in ("face", "space2")
+        for ink in (0.4, 0.7, 0.9)
+        for seed in (10, 11)
+    )
+
+
+def test_varied_effect_options_are_in_the_name(tmp_path, monkeypatch):
+    made = batch(
+        tmp_path, monkeypatch,
+        "--print", "screenprint", "--ink", "0.4", "0.7", "--pull", "90", "--seed", "5",
+    )  # fmt: skip
+    assert len(made) == 2
+    for name, recipe in made.items():
+        ink = recipe.prints[0].ink
+        assert re.fullmatch(
+            rf"nltl-face-primary-ink{ink:g}-\d{{8}}-\d{{6}}-s5\.png", name
+        )
+
+
+def test_repeated_values_render_once(tmp_path, monkeypatch):
+    assert len(batch(tmp_path, monkeypatch, "--shape", "face", "face")) == 1
+
+
+def test_batch_rejects_bad_value_before_rendering(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    err = usage_error(capsys, "--print", "screenprint", "--ink", "0.5", "2")
+    assert "ink must be" in err
+    assert not (tmp_path / "output").exists()
+
+
+def test_output_path_needs_a_single_image(tmp_path, capsys):
+    err = usage_error(capsys, "--count", "2", "--output", str(tmp_path / "x.png"))
+    assert "--output names one file" in err
+
+
+def test_count_must_be_positive(capsys, tmp_path):
+    assert "at least 1" in usage_error(capsys, "-n", "0")
